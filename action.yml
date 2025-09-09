@@ -1,0 +1,79 @@
+name: 'Determine Deploy Directory'
+description: 'Calculate deployment directory based on repository structure'
+author: 'KoalaOps'
+
+branding:
+  icon: 'folder'
+  color: 'purple'
+
+inputs:
+  service_dir:
+    description: 'Service directory'
+    required: false
+    default: '.'
+  deployment_repo:
+    description: 'Deployment repository (if different from current)'
+    required: false
+  deployment_path:
+    description: 'Path in deployment repository'
+    required: false
+  environment:
+    description: 'Environment/overlay name'
+    required: true
+  current_repo:
+    description: 'Current repository (defaults to github.repository)'
+    required: false
+    default: ${{ github.repository }}
+
+outputs:
+  deploy_dir:
+    description: 'Full path to deployment overlay directory'
+    value: ${{ steps.determine.outputs.deploy_dir }}
+  is_custom_path:
+    description: 'Whether using custom deployment path'
+    value: ${{ steps.determine.outputs.is_custom_path }}
+  base_dir:
+    description: 'Base directory before overlay path'
+    value: ${{ steps.determine.outputs.base_dir }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Determine deployment directory
+      id: determine
+      shell: bash
+      run: |
+        echo "=� Determining deployment directory..."
+        
+        # Check if using custom deployment path
+        IS_CUSTOM="false"
+        if [ -n "${{ inputs.deployment_repo }}" ] && [ "${{ inputs.deployment_repo }}" != "${{ inputs.current_repo }}" ]; then
+          IS_CUSTOM="true"
+        elif [ -n "${{ inputs.deployment_path }}" ] && [ "${{ inputs.deployment_path }}" != "${{ inputs.service_dir }}" ]; then
+          IS_CUSTOM="true"
+        fi
+        
+        echo "is_custom_path=$IS_CUSTOM" >> $GITHUB_OUTPUT
+        
+        # Determine base directory
+        if [ "$IS_CUSTOM" = "true" ] && [ -n "${{ inputs.deployment_path }}" ]; then
+          BASE_DIR="${{ inputs.deployment_path }}"
+        elif [ -n "${{ inputs.service_dir }}" ] && [ "${{ inputs.service_dir }}" != "." ]; then
+          BASE_DIR="${{ inputs.service_dir }}"
+        else
+          BASE_DIR="."
+        fi
+        
+        # Construct full deployment directory
+        if [ "$BASE_DIR" = "." ]; then
+          DEPLOY_DIR="deploy/overlays/${{ inputs.environment }}"
+        else
+          DEPLOY_DIR="$BASE_DIR/deploy/overlays/${{ inputs.environment }}"
+        fi
+        
+        echo "base_dir=$BASE_DIR" >> $GITHUB_OUTPUT
+        echo "deploy_dir=$DEPLOY_DIR" >> $GITHUB_OUTPUT
+        
+        echo " Deployment directory: $DEPLOY_DIR"
+        echo "   Base: $BASE_DIR"
+        echo "   Custom path: $IS_CUSTOM"
