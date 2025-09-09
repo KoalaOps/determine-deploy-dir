@@ -23,7 +23,6 @@ inputs:
   current_repo:
     description: 'Current repository (defaults to github.repository)'
     required: false
-    default: ${{ github.repository }}
 
 outputs:
   deploy_dir:
@@ -42,12 +41,17 @@ runs:
     - name: Determine deployment directory
       id: determine
       shell: bash
+      env:
+        CURRENT_REPO: ${{ inputs.current_repo || github.repository }}
       run: |
-        echo "=� Determining deployment directory..."
+        echo "==> Determining deployment directory..."
+        
+        # Get current repo from env or default
+        CURRENT_REPO="${CURRENT_REPO:-$GITHUB_REPOSITORY}"
         
         # Check if using custom deployment path
         IS_CUSTOM="false"
-        if [ -n "${{ inputs.deployment_repo }}" ] && [ "${{ inputs.deployment_repo }}" != "${{ inputs.current_repo }}" ]; then
+        if [ -n "${{ inputs.deployment_repo }}" ] && [ "${{ inputs.deployment_repo }}" != "$CURRENT_REPO" ]; then
           IS_CUSTOM="true"
         elif [ -n "${{ inputs.deployment_path }}" ] && [ "${{ inputs.deployment_path }}" != "${{ inputs.service_dir }}" ]; then
           IS_CUSTOM="true"
@@ -74,6 +78,6 @@ runs:
         echo "base_dir=$BASE_DIR" >> $GITHUB_OUTPUT
         echo "deploy_dir=$DEPLOY_DIR" >> $GITHUB_OUTPUT
         
-        echo " Deployment directory: $DEPLOY_DIR"
-        echo "   Base: $BASE_DIR"
-        echo "   Custom path: $IS_CUSTOM"
+        echo "  Deployment directory: $DEPLOY_DIR"
+        echo "    Base: $BASE_DIR"
+        echo "    Custom path: $IS_CUSTOM"
